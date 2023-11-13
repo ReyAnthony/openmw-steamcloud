@@ -13,6 +13,7 @@ namespace MWState
 
             // Uses std::list, so that mCurrent stays valid when characters are deleted
             std::list<Character> mCharacters;
+            std::list<std::string> mPrefixes;
 
             Character *mCurrent;
             std::string mGame;

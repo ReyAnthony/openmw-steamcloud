@@ -64,15 +64,15 @@ void MWState::Character::addSlot (const ESM::SavedGame& profile)
             stream << '_';
     }
 
-    const std::string ext = ".omwsave";
-    slot.mPath = mPath / (stream.str() + ext);
+    const std::string ext = ".omw.ess";
+    slot.mPath = mPath / (mPrefix + "." + stream.str() + ext);
 
     // Append an index if necessary to ensure a unique file
     int i=0;
     while (boost::filesystem::exists(slot.mPath))
     {
         const std::string test = stream.str() + " - " + std::to_string(++i);
-        slot.mPath = mPath / (test + ext);
+        slot.mPath = mPath / (mPrefix + "." + test + ext);
     }
 
     slot.mProfile = profile;
@@ -81,44 +81,32 @@ void MWState::Character::addSlot (const ESM::SavedGame& profile)
     mSlots.push_back (slot);
 }
 
-MWState::Character::Character (const boost::filesystem::path& saves, const std::string& game)
-: mPath (saves)
+MWState::Character::Character (const boost::filesystem::path& saves, const std::string& prefix, const std::string& game)
+: mPath (saves), mPrefix(prefix)
 {
-    if (!boost::filesystem::is_directory (mPath))
+    
+    for (boost::filesystem::directory_iterator iter (mPath);
+        iter!=boost::filesystem::directory_iterator(); ++iter)
     {
-        boost::filesystem::create_directories (mPath);
-    }
-    else
-    {
-        for (boost::filesystem::directory_iterator iter (mPath);
-            iter!=boost::filesystem::directory_iterator(); ++iter)
-        {
-            boost::filesystem::path slotPath = *iter;
+        boost::filesystem::path slotPath = *iter;
+        std::string saveFile = slotPath.filename().string();
 
+        if (saveFile.substr(0, saveFile.find(".")) == mPrefix)
+        {
             try
             {
-                addSlot (slotPath, game);
+                addSlot(slotPath, game);
             }
             catch (...) {} // ignoring bad saved game files for now
         }
-
-        std::sort (mSlots.begin(), mSlots.end());
     }
+
+    std::sort (mSlots.begin(), mSlots.end());  
 }
 
 void MWState::Character::cleanup()
 {
-    if (mSlots.size() == 0)
-    {
-        // All slots are gone, no need to keep the empty directory
-        if (boost::filesystem::is_directory (mPath))
-        {
-            // Extra safety check to make sure the directory is empty (e.g. slots failed to parse header)
-            boost::filesystem::directory_iterator it(mPath);
-            if (it == boost::filesystem::directory_iterator())
-                boost::filesystem::remove_all(mPath);
-        }
-    }
+    //TODO delete ?
 }
 
 const MWState::Slot *MWState::Character::createSlot (const ESM::SavedGame& profile)
@@ -191,6 +179,11 @@ ESM::SavedGame MWState::Character::getSignature() const
             slot = *iter;
 
     return slot.mProfile;
+}
+
+const std::string MWState::Character::getPrefix() const
+{
+    return mPrefix;
 }
 
 const boost::filesystem::path& MWState::Character::getPath() const

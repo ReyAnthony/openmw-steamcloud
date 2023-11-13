@@ -737,7 +737,9 @@ void OMW::Engine::setWindowIcon()
 
 void OMW::Engine::prepareEngine()
 {
-    mStateManager = std::make_unique<MWState::StateManager>(mCfgMgr.getUserDataPath() / "saves", mContentFiles);
+    //TODO, I'm pretty sure the actual path to Morrowind is stored somewhere
+    //This only gets the path of the launched .exe, which work for my special case (I owm data in the Morrowind folder)
+    mStateManager = std::make_unique<MWState::StateManager>((mCfgMgr.getLocalPath() / "saves").normalize(), mContentFiles);
     mEnvironment.setStateManager(*mStateManager);
 
     mStereoManager = std::make_unique<Stereo::Manager>(mViewer);

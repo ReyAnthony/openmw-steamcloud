@@ -17,21 +17,39 @@ MWState::CharacterManager::CharacterManager (const boost::filesystem::path& save
     }
     else
     {
-        for (boost::filesystem::directory_iterator iter (mPath);
-            iter!=boost::filesystem::directory_iterator(); ++iter)
+        //TODO migrate old saves with folders and .own ext
+        for (boost::filesystem::directory_iterator iter(mPath);
+                iter != boost::filesystem::directory_iterator(); ++iter)
         {
-            boost::filesystem::path characterDir = *iter;
+            boost::filesystem::path savePath = *iter;
+            std::string characterSave = savePath.filename().string();
 
-            if (boost::filesystem::is_directory (characterDir))
+            if (!boost::filesystem::is_directory(savePath))
             {
-                Character character (characterDir, mGame);
+                std::string currentPrefix;
+                try
+                {
+                    currentPrefix = characterSave.substr(0, characterSave.find("."));
+                }
+                catch (...)
+                {
+                    continue;
+                }
 
-                if (character.begin()!=character.end())
-                    mCharacters.push_back (character);
-            }
+                const auto& prefixNotFoundYet = std::find(mPrefixes.begin(), mPrefixes.end(), currentPrefix) == mPrefixes.end();
+                if (prefixNotFoundYet)
+                {
+                    Character character(mPath, currentPrefix, mGame);
+                    mCharacters.push_back(character);
+
+                    //TODO do not use prefixes and search directly in mCharacters since they have them too
+                    mPrefixes.push_back(currentPrefix);
+                }
+            }          
         }
     }
 }
+
 
 MWState::Character *MWState::CharacterManager::getCurrentCharacter ()
 {
@@ -48,40 +66,29 @@ void MWState::CharacterManager::deleteSlot(const MWState::Character *character, 
     {
         // All slots deleted, cleanup and remove this character
         it->cleanup();
+        mPrefixes.remove(it->getPrefix());
+
         if (character == mCurrent)
             mCurrent = nullptr;
         mCharacters.erase(it);
+      
     }
 }
 
 MWState::Character* MWState::CharacterManager::createCharacter(const std::string& name)
 {
-    std::ostringstream stream;
+    std::string finalName = name;
+    int i = 0;
 
-    // The character name is user-supplied, so we need to escape the path
-    Utf8Stream nameStream(name);
-    while(!nameStream.eof())
+    //Add index to the name if already existing
+    while (std::find(mPrefixes.begin(), mPrefixes.end(), finalName) != mPrefixes.end())
     {
-        auto c = nameStream.consume();
-        if(c <= 0x7F && std::isalnum(c)) // Ignore multibyte characters and non alphanumeric characters
-            stream << static_cast<char>(c);
-        else
-            stream << '_';
+        std::ostringstream test;
+        test << name << ++i;
+        finalName = test.str();
     }
 
-    boost::filesystem::path path = mPath / stream.str();
-
-    // Append an index if necessary to ensure a unique directory
-    int i=0;
-    while (boost::filesystem::exists(path))
-    {
-           std::ostringstream test;
-           test << stream.str();
-           test << " - " << ++i;
-           path = mPath / test.str();
-    }
-
-    mCharacters.emplace_back(path, mGame);
+    mCharacters.emplace_back(mPath, finalName, mGame);
     return &mCharacters.back();
 }
 

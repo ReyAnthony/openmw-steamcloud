@@ -28,6 +28,7 @@ namespace MWState
 
             boost::filesystem::path mPath;
             std::vector<Slot> mSlots;
+            std::string mPrefix;
 
             void addSlot (const boost::filesystem::path& path, const std::string& game);
 
@@ -35,7 +36,7 @@ namespace MWState
 
         public:
 
-            Character (const boost::filesystem::path& saves, const std::string& game);
+            Character (const boost::filesystem::path& saves, const std::string& prefix, const std::string& game);
 
             void cleanup();
             ///< Delete the directory we used, if it is empty
@@ -66,6 +67,8 @@ namespace MWState
             ///< Return signature information for this character.
             ///
             /// \attention This function must not be called if there are no slots.
+            
+            const std::string getPrefix() const;  
     };
 }
 
